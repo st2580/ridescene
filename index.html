@@ -398,7 +398,7 @@ const REGIONS={
  '제주도':'제주 126.53 33.50|서귀포 126.56 33.25'};
 for(const k in REGIONS)if(typeof REGIONS[k]==='string')REGIONS[k]=REGIONS[k].split('|').map(s=>{const[n,x,y]=s.split(' ');return[n,+x,+y,.09]});
 const isProv=r=>REGIONS[r].length>1||/도$/.test(r);
-let cams=[],camsMock=true;
+let cams=[],camsMock=true,camsAt=0;
 function fillRegions(){const r=$('cRegion');r.innerHTML='';
   const g1=document.createElement('optgroup');g1.label='특별·광역시';const g2=document.createElement('optgroup');g2.label='도 (다음 칸에서 시 선택)';
   Object.keys(REGIONS).forEach(k=>{const o=new Option(k,k);(isProv(k)?g2:g1).appendChild(o)});r.append(g1,g2);
@@ -424,7 +424,7 @@ async function findCams(){const b=cityBox();
       let d=j?.response?.data??j?.data??[];if(!Array.isArray(d))d=[d];
       d.forEach(c=>{if(c&&c.cctvurl)out.push({name:(c.cctvname||'').trim()||'이름 없는 카메라',road:t,url:c.cctvurl.replace(/^http:\/\//,'https://'),x:+c.coordx,y:+c.coordy})})}
     catch(e){err=e.message||String(e)}}
-  if(out.length){cams=out;camsMock=false;$('cState').textContent=`${b.name}: 고속도로 ${out.filter(c=>c.road==='ex').length}대, 국도 ${out.filter(c=>c.road==='its').length}대`}
+  if(out.length){cams=out;camsMock=false;camsAt=Date.now();$('cState').textContent=`${b.name}: 고속도로 ${out.filter(c=>c.road==='ex').length}대, 국도 ${out.filter(c=>c.road==='its').length}대`}
   else{cams=mockCams();camsMock=true;$('cState').textContent=err?`ITS 서버 호출 실패 (${err}). 키가 맞는지, 이 주소에서 호출이 허용되는지 확인하세요. 지금은 예시 카메라로 동작해요.`:`${b.name} 주변에서 카메라를 찾지 못했어요. 다른 시나 도로를 골라보세요. 지금은 예시 카메라로 동작해요.`}
   listCams();updateSum();return cams}
 function listCams(){$('cList').textContent=cams.slice(0,40).map(c=>(c.road==='ex'?'[고속] ':'[국도] ')+c.name).join(' · ')+(cams.length>40?` 외 ${cams.length-40}대`:'')}
@@ -620,7 +620,7 @@ async function start(){
   R.prog=PROGRAMS.find(p=>p.id===cfg.prog)||PROGRAMS[0];R.ftp=cfg.ftp;R.int=1;R.el=0;R.rec=[];R.lastSec=-1;R.segIdx=-1;R.paused=false;R.running=true;R.startedAt=new Date();R.dist=0;
   try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();actx.resume()}catch(e){}
   $('setup').hidden=true;$('startbar').hidden=true;$('ride').hidden=false;document.body.style.overflow='hidden';
-  if(cfg.vid==='cctv'&&!cams.length)await findCams();
+  if(cfg.vid==='cctv'&&(!cams.length||(!camsMock&&Date.now()-camsAt>5*60e3)))await findCams();
   R.srcKey=null;R.cur=null;R.camIdx={ex:0,its:0};R.sampleFlip=0;
   layout();
   applySource(pickSource(0,R.prog.segs[0]),false);
@@ -646,6 +646,7 @@ function pickSource(i,s){
   const pref=hard?['ex','its']:['its','ex'];let road=pref.find(r=>cams.some(c=>c.road===r));
   const pool=cams.filter(c=>c.road===road);if(!pool.length)return{key:'scene:alpine',kind:'scene',theme:'alpine'};
   if(R.srcKey&&!cfg.sw)return null; // keep current camera
+  if(!camsMock&&Date.now()-camsAt>10*60e3)findCams(); // stream URLs carry expiring tokens; refresh in background
   const c=pool[R.camIdx[road]++%pool.length];
   const label=(road==='ex'?'고속도로 · ':'국도 · ')+c.name;
   return c.url?{key:'cam:'+c.url,kind:'video',url:c.url,live:true,label}:{key:'mock:'+c.name,kind:'scene',theme:c.theme,cctv:true,label};
@@ -660,7 +661,7 @@ function applySource(src,fade=true){
     $('scene').hidden=useVideo;vid.hidden=!useVideo;$('scene').classList.toggle('cctv',!!src.cctv);
     if(hls){hls.destroy();hls=null}
     if(useVideo){vid.loop=cfg.loop&&!src.live;vid.muted=true;vid.playbackRate=1;
-      if(src.live&&!vid.canPlayType('application/vnd.apple.mpegurl')&&/\.m3u8/i.test(src.url)){
+      if(src.live&&!vid.canPlayType('application/vnd.apple.mpegurl')){
         try{const H=await loadHls();if(H&&H.isSupported()){hls=new H({lowLatencyMode:true});hls.loadSource(src.url);hls.attachMedia(vid)}else vid.src=src.url}catch(e){vid.src=src.url}}
       else vid.src=src.url;
       if(src.fileIdx!=null&&files[src.fileIdx]?.pos){const p=files[src.fileIdx].pos;vid.addEventListener('loadedmetadata',()=>{try{vid.currentTime=p}catch(e){}},{once:true})}
