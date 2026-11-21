@@ -420,7 +420,7 @@ async function findCams(){const b=cityBox();
   $('cState').textContent=`${b.name} 카메라 찾는 중…`;const types=cfg.cRoad==='all'?['ex','its']:[cfg.cRoad];const out=[];let err='';
   for(const t of types){
     const q=new URLSearchParams({apiKey:cfg.cKey,type:t,cctvType:'4',minX:b.minX.toFixed(4),maxX:b.maxX.toFixed(4),minY:b.minY.toFixed(4),maxY:b.maxY.toFixed(4),getType:'json'});
-    try{const res=await fetch('https://openapi.its.go.kr:9443/cctvInfo?'+q);if(!res.ok)throw new Error('HTTP '+res.status);const j=await res.json();
+    try{const res=await fetch('https://openapi.its.go.kr:9443/cctvInfo?'+q);let j=null;try{j=await res.json()}catch(e){}const hd=j&&j.header;if(hd&&hd.resultCode&&hd.resultCode!==0&&hd.resultCode!=='0'&&String(hd.resultCode)!=='200')throw new Error(hd.resultMsg||('코드 '+hd.resultCode));if(!res.ok)throw new Error('HTTP '+res.status);if(!j)throw new Error('응답 형식 오류');
       let d=j?.response?.data??j?.data??[];if(!Array.isArray(d))d=[d];
       d.forEach(c=>{if(c&&c.cctvurl)out.push({name:(c.cctvname||'').trim()||'이름 없는 카메라',road:t,url:c.cctvurl.replace(/^http:\/\//,'https://'),x:+c.coordx,y:+c.coordy})})}
     catch(e){err=e.message||String(e)}}
