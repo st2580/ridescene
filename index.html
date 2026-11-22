@@ -200,7 +200,7 @@ section.step{margin-top:26px}
       <button class="card" role="radio" data-vid="nasa"><img class="thumb" src="https://i.ytimg.com/vi/ROboUHfPUrU/hqdefault_live.jpg" alt="" loading="lazy"><span class="t">우주에서 본 지구</span><span class="d">NASA 국제우주정거장 실시간 영상 (유튜브 공식 라이브). 실시간이라 재생 속도 맞추기와 구간별 전환은 적용되지 않아요. 밤 시간대 궤도에서는 화면이 어둡게 보여요.</span></button>
       <div class="card wide" role="radio" tabindex="0" data-vid="live">
         <span class="t">세계 라이브 캠</span>
-        <span class="d">유튜브 실시간 방송을 배경으로 틀어요. 고강도 구간에는 시부야 교차로·LA 공항 활주로·나자레 파도·타임스스퀘어·기차 운전석, 워밍업과 회복 구간에는 수족관 켈프 숲·해파리·스위스 알프스·한강·남산·도쿄만이 돌아가며 나와요.</span>
+        <span class="d">유튜브 실시간 방송을 배경으로 틀어요. 모두 4K 방송이에요. 고강도 구간에는 나자레 파도·오사카·크라이스트처치 공항·시드니 항구·홍콩·베네치아, 워밍업과 회복 구간에는 한강·남산·광안대교·성산일출봉·도쿄만·세이셸 해변이 돌아가며 나와요. 화질은 화면 크기와 인터넷 속도에 맞춰 유튜브가 정해요.</span>
         <label class="field" for="ytIn"><input id="ytIn" type="url" placeholder="원하는 유튜브 라이브 주소 (선택, 넣으면 이 영상만 나와요)"></label>
         <span class="hint" id="ytState"></span>
       </div>
@@ -680,18 +680,19 @@ function pickSource(i,s){
   return c.url?{key:'cam:'+c.url,kind:'video',url:c.url,live:true,label}:{key:'mock:'+c.name,kind:'scene',theme:c.theme,cctv:true,label};
 }
 // YouTube live streams checked live + embeddable on 2026-11-22. IDs can change when a channel restarts its stream.
-const LIVE=[
- {id:'dfVK7ld38Ys',name:'도쿄 시부야 스크램블 교차로 · FNN',hard:true},
- {id:'n4I0d44oBEs',name:'LA 공항 활주로 · AirlineVideosLive',hard:true},
- {id:'k1vObaJ5uMs',name:'포르투갈 나자레 파도 · MCYDRO',hard:true},
- {id:'ZxCeWQ3Lcig',name:'뉴욕 타임스스퀘어 · EarthCam',hard:true},
- {id:'j9yokDlpsIM',name:'노르웨이 기차 운전석 (녹화 반복) · RailCowGirl',hard:true},
- {id:'w3LjpFhySTg',name:'켈프 숲 · 몬터레이 베이 수족관',hard:false},
- {id:'eQ_foBERmzA',name:'해파리 · 몬터레이 베이 수족관',hard:false},
- {id:'enYFXf8u7Lc',name:'스위스 알프스 파노라마 · feratel',hard:false},
- {id:'vk5BHoDxXf0',name:'서울 한강·여의도 · RIVERWORKER',hard:false},
- {id:'Q6WKC4vDsUU',name:'서울 남산타워 · 한강 라이브 365',hard:false},
- {id:'_k-5U7IeK8g',name:'도쿄만 · Tokyo Views LIVE',hard:false},
+const LIVE=[ // all streams offer 2160p (4K)
+ {id:'k1vObaJ5uMs',name:'포르투갈 나자레 파도 4K · MCYDRO',hard:true},
+ {id:'R6cWQHTQq-c',name:'오사카 시내 4K · 大阪環状線ライブカメラ',hard:true},
+ {id:'cMa6tO6tCVQ',name:'뉴질랜드 크라이스트처치 공항 4K · 4K Aircraft Live',hard:true},
+ {id:'5uZa3-RMFos',name:'시드니 항구 4K · WebcamSydney',hard:true},
+ {id:'OtreHvXgAoA',name:'홍콩 도심 4K · Brainrolling Workshop',hard:true},
+ {id:'mt7uE-n0YPI',name:'베네치아 운하 4K · I Love You Venice',hard:true},
+ {id:'vk5BHoDxXf0',name:'서울 한강·여의도 4K · RIVERWORKER',hard:false},
+ {id:'Q6WKC4vDsUU',name:'서울 남산타워 4K · 한강 라이브 365',hard:false},
+ {id:'m_EmGDe_P84',name:'부산 광안대교 4K',hard:false},
+ {id:'udRDI1uDdvQ',name:'제주 성산일출봉 4K · GiGAeyes',hard:false},
+ {id:'_k-5U7IeK8g',name:'도쿄만 4K · Tokyo Views LIVE',hard:false},
+ {id:'Thtj8Ht7Z_c',name:'세이셸 해변 4K · Luxury Island',hard:false},
 ];
 function ytId(u){if(!u)return null;const m=String(u).match(/(?:v=|youtu\.be\/|\/live\/|\/embed\/|\/shorts\/)([\w-]{11})/);return m?m[1]:(/^[\w-]{11}$/.test(u.trim())?u.trim():null)}
 const NASA_YT='ROboUHfPUrU'; // NASA official 24/7 ISS live stream on YouTube (checked 2026-11-22)
@@ -703,7 +704,7 @@ function applySource(src,fade=true){
     if(R.cur&&R.cur.fileIdx!=null&&files[R.cur.fileIdx])files[R.cur.fileIdx].pos=vid.currentTime||0;
     R.srcKey=src.key;R.cur=src;R.live=!!src.live;useVideo=src.kind==='video';const isYt=src.kind==='yt';
     $('scene').hidden=useVideo||isYt;vid.hidden=!useVideo;
-    const yw=$('ytWrap');yw.hidden=!isYt;if(isYt){let f=yw.firstChild;if(!f){f=document.createElement('iframe');f.allow='autoplay; encrypted-media';f.title='배경 라이브 영상';yw.appendChild(f)}const u=`https://www.youtube-nocookie.com/embed/${src.id}?autoplay=1&mute=1&controls=0&playsinline=1&rel=0&modestbranding=1`;if(f.src!==u)f.src=u}else yw.textContent='';
+    const yw=$('ytWrap');yw.hidden=!isYt;if(isYt){let f=yw.firstChild;if(!f){f=document.createElement('iframe');f.allow='autoplay; encrypted-media';f.title='배경 라이브 영상';yw.appendChild(f)}const u=`https://www.youtube.com/embed/${src.id}?autoplay=1&mute=1&controls=0&playsinline=1&rel=0&modestbranding=1&vq=hd2160`;if(f.src!==u)f.src=u}else yw.textContent='';
     if(isYt){vid.pause();$('fade').style.opacity=0;}$('scene').classList.toggle('cctv',!!src.cctv);
     if(hls){hls.destroy();hls=null}
     if(useVideo){vid.loop=cfg.loop&&!src.live;vid.muted=true;vid.playbackRate=1;
