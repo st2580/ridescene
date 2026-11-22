@@ -91,9 +91,21 @@ section.step{margin-top:26px}
 #hud.hot{border-color:rgba(255,150,60,.85);box-shadow:0 0 0 2px rgba(255,140,40,.35),0 0 30px rgba(255,140,40,.35)}
 #hud.flash{border-color:rgba(255,255,255,.7)}
 #hrow{display:flex;align-items:center;height:clamp(36px,4.1vw,56px)}
-#hrow>.cell{display:flex;align-items:baseline;gap:clamp(4px,.5vw,8px);padding:0 clamp(8px,1.3vw,20px);white-space:nowrap;min-width:0}
+#hrow{min-width:0;overflow:hidden}
+#hrow>.cell{display:flex;align-items:baseline;gap:clamp(4px,.5vw,8px);padding:0 clamp(6px,1.1vw,20px);white-space:nowrap;flex:0 0 auto}
+#c-int{flex:0 0 auto!important}
+@media (max-width:980px){#ride:not(.v) #c-time{display:none}}
+#ride.fit-contain video{object-fit:contain}
+#ride.fit-contain #ytWrap iframe{width:min(100vw,177.78vh);height:min(100vh,56.25vw)}
+#c-int .iname{overflow:hidden;text-overflow:ellipsis}
+#c-int>span:first-child{min-width:0;overflow:hidden}
+#c-next{flex:1 1 auto!important;min-width:0;overflow:hidden;justify-content:flex-end}
+#c-next .nn{overflow:hidden;text-overflow:ellipsis}
+@media (max-width:1150px){#ride:not(.v) .hide-m{display:none}}
+@media (max-width:1150px){#ride:not(.v) #c-next .ni{display:none}}
+@media (max-width:820px){#ride:not(.v) #iidx{display:none}}
 #hrow>.cell+.cell{border-left:1px solid rgba(255,255,255,.14)}
-.v1{font-size:clamp(20px,2.4vw,34px);font-weight:800;line-height:1}
+.v1{font-size:clamp(18px,2.3vw,34px);font-weight:800;line-height:1}
 .u{font-size:clamp(11px,1.05vw,15px);font-weight:600;opacity:.72}
 .sub{font-size:clamp(11px,1vw,14px);font-weight:600;opacity:.8}
 .zchip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:clamp(11px,.95vw,13px);font-weight:800;color:#111;align-self:center}
@@ -263,6 +275,7 @@ section.step{margin-top:26px}
     <button id="bPause">일시정지</button>
     <button id="bSkip">다음 구간 ⏭</button>
     <button id="bDown" aria-label="강도 낮추기">−</button><span class="iv num" id="ivl">100%</span><button id="bUp" aria-label="강도 높이기">+</button>
+    <button id="bFit">화면 채우기</button>
     <button id="bFull">전체화면</button>
     <button id="bEnd">종료</button>
   </div>
@@ -361,7 +374,7 @@ function drawProfile(cv,prog,T,{played=true,ftpLine=true,maxP=1.35}={}){
 /* ================= settings ================= */
 const cfg={ftp:store.get('ftp',250),prog:store.get('prog','sst-surge'),vid:store.get('vid','alpine'),url:store.get('url',''),
   sync:store.get('sync',true),loop:store.get('loop',true),erg:store.get('erg',true),sim:store.get('sim',false),sound:store.get('sound',true),
-  sw:store.get('sw',true),cRegion:store.get('cRegion','서울'),cCity:store.get('cCity',''),cRoad:store.get('cRoad','all'),cKey:store.get('cKey','')};
+  sw:store.get('sw',true),fit:store.get('fit','cover'),cRegion:store.get('cRegion','서울'),cCity:store.get('cCity',''),cRoad:store.get('cRoad','all'),cKey:store.get('cKey','')};
 let fileURL=null,fileLabel='',files=[]; // files: [{url,name,pos}]
 $('ftp').value=cfg.ftp;$('urlIn').value=cfg.url;
 [['optSync','sync'],['optLoop','loop'],['optErg','erg'],['optSim','sim'],['optSound','sound'],['optSwitch','sw']].forEach(([id,k])=>{const el=$(id);el.checked=cfg[k];
@@ -626,7 +639,7 @@ async function start(){
   $('setup').hidden=true;$('startbar').hidden=true;$('ride').hidden=false;document.body.style.overflow='hidden';
   if(cfg.vid==='cctv'&&(!cams.length||(!camsMock&&Date.now()-camsAt>5*60e3)))await findCams();
   R.srcKey=null;R.cur=null;R.camIdx={ex:0,its:0};R.sampleFlip=0;
-  layout();
+  layout();applyFit();
   applySource(pickSource(0,R.prog.segs[0]),false);
   try{await document.documentElement.requestFullscreen?.()}catch(e){}
   try{wake=await navigator.wakeLock?.request('screen')}catch(e){}
@@ -719,10 +732,10 @@ function renderHUD(i,s,nx,p,aP,aC,aH){
   $('iname').textContent=s.name;$('iidx').textContent=`${i+1}/${S.length}`;
   const pct=Math.round(p*R.int*100),adj=R.int!==1?`<span class="adj">${R.int>1?'+':''}${Math.round((R.int-1)*100)}%</span>`:'';
   if(aP!=null){const c=cls(aP,R.targetW*.93,R.targetW*1.07);
-    cell($('c-pow'),`<span class="num v1 act ${c}">${aP}</span><span class="u">W</span><span class="num sub">목표 ${R.targetW} · ${pct}%</span>${adj}`)}
-  else cell($('c-pow'),`<span class="num v1">${R.targetW}</span><span class="u">W</span><span class="num sub">${pct}% FTP</span>${adj}`);
+    cell($('c-pow'),`<span class="num v1 act ${c}">${aP}</span><span class="u">W</span><span class="num sub">목표 ${R.targetW}<span class="hide-m"> · ${pct}%</span></span>${adj}`)}
+  else cell($('c-pow'),`<span class="num v1">${R.targetW}</span><span class="u">W</span><span class="num sub">${pct}%<span class="hide-m"> FTP</span></span>${adj}`);
   if(aC!=null){const c=cls(aC,R.cadRange[0]-3,s.cad.includes('+')?999:R.cadRange[1]+3);
-    cell($('c-cad'),`<span class="num v1 act ${c}">${Math.round(aC)}</span><span class="u">rpm</span><span class="num sub">목표 ${s.cad}</span>`)}
+    cell($('c-cad'),`<span class="num v1 act ${c}">${Math.round(aC)}</span><span class="u">rpm</span><span class="num sub"><span class="hide-m">목표 </span>${s.cad}</span>`)}
   else cell($('c-cad'),`<span class="num v1">${s.cad}</span><span class="u">rpm</span>`);
   $('c-hr').hidden=aH==null;if(aH!=null)$('hrv').textContent=aH;
   $('stepRem').textContent=fmt(rem);
@@ -752,6 +765,8 @@ $('ride').addEventListener('click',e=>{if(e.target.closest('#ctrl'))return;if(R.
 $('bPause').onclick=()=>{setPause(!R.paused);showCtrl()};
 $('bSkip').onclick=()=>{const i=segAt(R.el),s=R.prog.segs[i];R.el=Math.min(R.prog.total-.01,s.st+s.dur+.01);ergLast=-1;tick();showCtrl()};
 const setInt=d=>{R.int=clamp(Math.round((R.int+d)*100)/100,.5,1.5);$('ivl').textContent=Math.round(R.int*100)+'%';ergLast=-1;tick();showCtrl()};
+function applyFit(){$('ride').classList.toggle('fit-contain',cfg.fit==='contain');$('bFit').textContent=cfg.fit==='contain'?'영상 전체 보기':'화면 채우기'}
+$('bFit').onclick=()=>{cfg.fit=cfg.fit==='contain'?'cover':'contain';store.set('fit',cfg.fit);applyFit();showCtrl()};
 $('bDown').onclick=()=>setInt(-.05);$('bUp').onclick=()=>setInt(.05);
 $('bFull').onclick=async()=>{try{document.fullscreenElement?await document.exitFullscreen():await document.documentElement.requestFullscreen()}catch(e){toast('이 화면에서는 전체화면을 쓸 수 없어요')}showCtrl()};
 $('bEnd').onclick=()=>{if($('bEnd').dataset.arm){finish();return}$('bEnd').dataset.arm=1;$('bEnd').textContent='한 번 더 누르면 종료';setTimeout(()=>{delete $('bEnd').dataset.arm;$('bEnd').textContent='종료'},3000);showCtrl()};
