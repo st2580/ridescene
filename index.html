@@ -217,6 +217,14 @@ section.step{margin-top:26px}
         <label class="field" for="ytIn"><input id="ytIn" type="url" placeholder="원하는 유튜브 라이브 주소 (선택, 넣으면 이 영상만 나와요)"></label>
         <span class="hint" id="ytState"></span>
       </div>
+      <div class="card wide" role="radio" tabindex="0" data-vid="tv">
+        <span class="t">국내 방송 (실시간)</span>
+        <span class="d">방송사 공식 유튜브 채널의 24시간 라이브예요. 고른 채널 하나가 운동 내내 나와요. 채널 사정으로 방송이 끝나거나 주소가 바뀌면 안 나올 수 있어요.</span>
+        <div class="cctv-grid">
+          <label class="sel" for="tvSel"><span class="lbl">채널</span><select id="tvSel"></select></label>
+        </div>
+        <label class="toggle" for="tvSound"><input type="checkbox" id="tvSound">방송 소리 켜기</label>
+      </div>
       <div class="card wide" role="radio" tabindex="0" data-vid="cctv">
         <span class="t">실시간 도로 CCTV</span>
         <span class="d">국가교통정보센터(ITS)의 고속도로·국도 CCTV를 지역별로 골라 봅니다. 광역시는 바로, 도는 도를 고른 뒤 시를 고르세요. 고강도 구간에는 고속도로, 워밍업·회복 구간에는 국도 카메라를 우선 보여줘요.</span>
@@ -395,7 +403,7 @@ function drawProfile(cv,prog,T,{played=true,ftpLine=true,maxP=1.35}={}){
 /* ================= settings ================= */
 const cfg={ftp:store.get('ftp',250),prog:store.get('prog','sst-surge'),vid:store.get('vid','alpine'),url:store.get('url',''),
   sync:store.get('sync',true),loop:store.get('loop',true),erg:store.get('erg',true),sim:store.get('sim',false),sound:store.get('sound',true),
-  sw:store.get('sw',true),hud:store.get('hud','top'),yt:store.get('yt',''),fit:store.get('fit','cover'),cRegion:store.get('cRegion','서울'),cCity:store.get('cCity',''),cRoad:store.get('cRoad','all'),cKey:store.get('cKey','')};
+  sw:store.get('sw',true),tv:store.get('tv','zGFBJL_fhUU'),tvSound:store.get('tvSound',false),hud:store.get('hud','top'),yt:store.get('yt',''),fit:store.get('fit','cover'),cRegion:store.get('cRegion','서울'),cCity:store.get('cCity',''),cRoad:store.get('cRoad','all'),cKey:store.get('cKey','')};
 let fileURL=null,fileLabel='',files=[]; // files: [{url,name,pos}]
 $('ftp').value=cfg.ftp;$('urlIn').value=cfg.url;
 [['optSync','sync'],['optLoop','loop'],['optErg','erg'],['optSim','sim'],['optSound','sound'],['optSwitch','sw']].forEach(([id,k])=>{const el=$(id);el.checked=cfg[k];
@@ -471,13 +479,21 @@ let hlsLib=null;
 function loadHls(){if(window.Hls)return Promise.resolve(window.Hls);if(hlsLib)return hlsLib;
   hlsLib=new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js';s.onload=()=>ok(window.Hls);s.onerror=no;document.head.appendChild(s)});return hlsLib}
 fillRegions();
+// Korean broadcasters' official 24h YouTube lives, checked live + embeddable on 2026-11-22
+const TV=[
+ ['뉴스','KBS 뉴스24','zGFBJL_fhUU'],['뉴스','MBC 24시간 뉴스','q9bM12ucTIY'],['뉴스','연합뉴스TV','6QZ_qc75ihU'],['뉴스','YTN (DMB)','B0-AnhL12vw'],['뉴스','JTBC 뉴스룸이 만난 사람들','hSguEYOK344'],['뉴스','아리랑TV (영어)','hvVlyZ5GiE8'],
+ ['예능·교양','SBS 런닝맨 몰아보기','d8OvbUAxaec'],['예능·교양','SBS TV동물농장','c5vMJo5-8Wg'],['예능·교양','SBS 시트콤 대박가족','tvQSXhnGiKI'],['예능·교양','tvN 벌거벗은 한국사','WpvCQaOxA7s'],['예능·교양','KBS 역사저널 그날','4Q-yFBS769A'],
+ ['드라마·음악','KBS 대하사극 (태조왕건·대조영 등)','1bROU5AqM8w'],['드라마·음악','KBS WORLD K-POP','-rleEnGt__s'],
+];
+{const sel=$('tvSel');const groups={};TV.forEach(([g,n,id])=>{if(!groups[g]){groups[g]=document.createElement('optgroup');groups[g].label=g;sel.appendChild(groups[g])}groups[g].appendChild(new Option(n,id))});sel.value=cfg.tv;
+ sel.addEventListener('change',()=>{cfg.tv=sel.value;store.set('tv',cfg.tv);selectVid('tv')});$('tvSound').checked=cfg.tvSound;$('tvSound').addEventListener('change',()=>{cfg.tvSound=$('tvSound').checked;store.set('tvSound',cfg.tvSound)})}
 $('ytIn').value=cfg.yt;$('ytIn').addEventListener('change',()=>{cfg.yt=$('ytIn').value.trim();store.set('yt',cfg.yt);$('ytState').textContent=cfg.yt&&!ytId(cfg.yt)?'유튜브 주소에서 영상 번호를 찾지 못했어요.':'';selectVid('live')});
 $('urlIn').addEventListener('change',()=>{cfg.url=$('urlIn').value.trim();store.set('url',cfg.url);$('urlState').textContent='';if(cfg.url)selectVid('url')});
 $('th-file').addEventListener('error',()=>{if(fileURL)$('fileName').textContent=`${fileLabel} · 이 브라우저에서 재생할 수 없는 형식이에요. H.264 MP4로 내보내 주세요.`});
 
 function updateSum(){const p=PROGRAMS.find(x=>x.id===cfg.prog)||PROGRAMS[0];
   const vn={alpine:'알프스 고갯길',coast:'해안도로 노을',file:fileLabel||'내 영상 (파일 선택 필요)',url:cfg.url?'영상 주소':'영상 주소 (입력 필요)',
-    cctv:`CCTV ${cityBox().name}${cfg.cKey?'':' (예시)'}`,nasa:'NASA 우주정거장 라이브',live:ytId(cfg.yt)?'내 유튜브 라이브':'세계 라이브 캠'}[cfg.vid]+(cfg.sw&&cfg.vid!=='url'&&cfg.vid!=='nasa'&&!(cfg.vid==='live'&&ytId(cfg.yt))?' · 구간마다 전환':'');
+    cctv:`CCTV ${cityBox().name}${cfg.cKey?'':' (예시)'}`,nasa:'NASA 우주정거장 라이브',live:ytId(cfg.yt)?'내 유튜브 라이브':'세계 라이브 캠',tv:(TV.find(x=>x[2]===cfg.tv)||TV[0])[1]}[cfg.vid]+(cfg.sw&&!['url','nasa','tv'].includes(cfg.vid)&&!(cfg.vid==='live'&&ytId(cfg.yt))?' · 구간마다 전환':'');
   const src=[BT.ftms.char&&'트레이너',BT.pm.char&&'파워미터',BT.hr.char&&'심박계',BT.csc.char&&'케이던스',cfg.sim&&'시뮬레이션'].filter(Boolean);
   $('startSum').innerHTML='';const s=$('startSum');
   s.append(Object.assign(document.createElement('b'),{textContent:p.name}),` · ${fmt(p.total)} · FTP ${cfg.ftp}W · `,Object.assign(document.createElement('b'),{textContent:vn}),` · 센서: ${src.length?src.join(', '):'없음 (목표만 표시)'}`);
@@ -683,6 +699,7 @@ function pickSource(i,s){
   if(cfg.vid==='file'){const n=files.length||1;let fi=0;if(cfg.sw&&n>1){do{fi=Math.floor(Math.random()*n)}while(R.cur&&fi===R.cur.fileIdx)}return{key:'file:'+fi,kind:'video',url:files[fi]?.url||fileURL,fileIdx:fi,label:files[fi]?.name}}
   if(cfg.vid==='url')return{key:'url',kind:'video',url:cfg.url};
   if(cfg.vid==='nasa')return{key:'yt:'+NASA_YT,kind:'yt',id:NASA_YT,live:true,label:'NASA · 국제우주정거장에서 본 지구 (라이브)'};
+  if(cfg.vid==='tv'){const t=TV.find(x=>x[2]===cfg.tv)||TV[0];return{key:'yt:'+t[2]+(cfg.tvSound?':s':''),kind:'yt',id:t[2],sound:cfg.tvSound,live:true,label:t[1]}}
   if(cfg.vid==='live'){const own=ytId(cfg.yt);if(own)return{key:'yt:'+own,kind:'yt',id:own,live:true,label:'유튜브 라이브'};
     const pool=LIVE.filter(c=>c.hard===hard);if(R.srcKey&&!cfg.sw)return null;const c=pickRand(pool,x=>'yt:'+x.id);
     return{key:'yt:'+c.id,kind:'yt',id:c.id,live:true,label:c.name}}
@@ -722,7 +739,7 @@ function applySource(src,fade=true){
     if(R.cur&&R.cur.fileIdx!=null&&files[R.cur.fileIdx])files[R.cur.fileIdx].pos=vid.currentTime||0;
     R.srcKey=src.key;R.cur=src;R.live=!!src.live;useVideo=src.kind==='video';const isYt=src.kind==='yt';
     $('scene').hidden=useVideo||isYt;vid.hidden=!useVideo;
-    const yw=$('ytWrap');yw.hidden=!isYt;if(isYt){let f=yw.firstChild;if(!f){f=document.createElement('iframe');f.allow='autoplay; encrypted-media';f.title='배경 라이브 영상';yw.appendChild(f)}const u=`https://www.youtube.com/embed/${src.id}?autoplay=1&mute=1&controls=0&playsinline=1&rel=0&modestbranding=1&vq=hd2160`;if(f.src!==u)f.src=u}else yw.textContent='';
+    const yw=$('ytWrap');yw.hidden=!isYt;if(isYt){let f=yw.firstChild;if(!f){f=document.createElement('iframe');f.allow='autoplay; encrypted-media';f.title='배경 라이브 영상';yw.appendChild(f)}const u=`https://www.youtube.com/embed/${src.id}?autoplay=1&mute=${src.sound?0:1}&controls=0&playsinline=1&rel=0&modestbranding=1&vq=hd2160`;if(f.src!==u)f.src=u}else yw.textContent='';
     if(isYt){vid.pause();$('fade').style.opacity=0;}$('scene').classList.toggle('cctv',!!src.cctv);
     if(hls){hls.destroy();hls=null}
     if(useVideo){vid.loop=cfg.loop&&!src.live;vid.muted=true;vid.playbackRate=1;
