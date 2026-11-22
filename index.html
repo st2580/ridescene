@@ -300,6 +300,7 @@ section.step{margin-top:26px}
   <div id="toast" class="glass" style="opacity:0"></div>
   <div id="pauseMask" hidden><div class="big">일시정지</div><div class="hint" style="color:#fff">화면을 누르면 다시 시작</div></div>
   <div id="ctrl" class="glass off">
+    <button id="bChDown" class="tvb" hidden>◀ 채널</button><span class="iv tvb" id="chNo" hidden></span><button id="bChUp" class="tvb" hidden>채널 ▶</button><button id="bSnd" class="tvb" hidden>소리 켜기</button><span class="tvb" style="flex-basis:100%;height:0" hidden></span>
     <button id="bPause">일시정지</button>
     <button id="bSkip">다음 구간 ⏭</button>
     <button id="bDown" aria-label="강도 낮추기">−</button><span class="iv num" id="ivl">100%</span><button id="bUp" aria-label="강도 높이기">+</button>
@@ -678,7 +679,7 @@ async function start(){
   $('setup').hidden=true;$('startbar').hidden=true;$('ride').hidden=false;document.body.style.overflow='hidden';
   if(cfg.vid==='cctv'&&(!cams.length||(!camsMock&&Date.now()-camsAt>5*60e3)))await findCams();
   R.srcKey=null;R.cur=null;R.camIdx={ex:0,its:0};R.sampleFlip=0;
-  layout();applyFit();applyHud();
+  layout();applyFit();applyHud();tvUi();
   applySource(pickSource(0,R.prog.segs[0]),false);
   try{await document.documentElement.requestFullscreen?.()}catch(e){}
   try{wake=await navigator.wakeLock?.request('screen')}catch(e){}
@@ -699,7 +700,7 @@ function pickSource(i,s){
   if(cfg.vid==='file'){const n=files.length||1;let fi=0;if(cfg.sw&&n>1){do{fi=Math.floor(Math.random()*n)}while(R.cur&&fi===R.cur.fileIdx)}return{key:'file:'+fi,kind:'video',url:files[fi]?.url||fileURL,fileIdx:fi,label:files[fi]?.name}}
   if(cfg.vid==='url')return{key:'url',kind:'video',url:cfg.url};
   if(cfg.vid==='nasa')return{key:'yt:'+NASA_YT,kind:'yt',id:NASA_YT,live:true,label:'NASA · 국제우주정거장에서 본 지구 (라이브)'};
-  if(cfg.vid==='tv'){const t=TV.find(x=>x[2]===cfg.tv)||TV[0];return{key:'yt:'+t[2]+(cfg.tvSound?':s':''),kind:'yt',id:t[2],sound:cfg.tvSound,live:true,label:t[1]}}
+  if(cfg.vid==='tv'){const n=Math.max(0,TV.findIndex(x=>x[2]===cfg.tv)),t=TV[n];return{key:'yt:'+t[2]+(cfg.tvSound?':s':''),kind:'yt',id:t[2],sound:cfg.tvSound,live:true,label:`CH ${n+1} · ${t[1]}`}}
   if(cfg.vid==='live'){const own=ytId(cfg.yt);if(own)return{key:'yt:'+own,kind:'yt',id:own,live:true,label:'유튜브 라이브'};
     const pool=LIVE.filter(c=>c.hard===hard);if(R.srcKey&&!cfg.sw)return null;const c=pickRand(pool,x=>'yt:'+x.id);
     return{key:'yt:'+c.id,kind:'yt',id:c.id,live:true,label:c.name}}
@@ -829,12 +830,16 @@ const setInt=d=>{R.int=clamp(Math.round((R.int+d)*100)/100,.5,1.5);$('ivl').text
 function applyHud(){const side=cfg.hud==='side'&&innerWidth>innerHeight*1.05;$('ride').classList.toggle('side',side);$('bHud').textContent=cfg.hud==='side'?'패널: 왼쪽':'패널: 위';if(R.prog)drawProfile($('hpc'),R.prog,R.el);placeTag()}
 function placeTag(){requestAnimationFrame(()=>{const t=$('camTag');if($('ride').classList.contains('side')){t.style.top='calc(14px + env(safe-area-inset-top,0px))'}else{const h=$('hud').getBoundingClientRect();t.style.top=(h.bottom+8)+'px'}})}
 $('bHud').onclick=()=>{cfg.hud=cfg.hud==='side'?'top':'side';store.set('hud',cfg.hud);$('optSide').checked=cfg.hud==='side';applyHud();showCtrl()};
+function tvUi(){const on=cfg.vid==='tv';document.querySelectorAll('#ctrl .tvb').forEach(b=>b.hidden=!on);if(!on)return;const n=Math.max(0,TV.findIndex(x=>x[2]===cfg.tv));$('chNo').textContent='CH '+(n+1);$('bSnd').textContent=cfg.tvSound?'소리 끄기':'소리 켜기'}
+function chStep(d){const n=Math.max(0,TV.findIndex(x=>x[2]===cfg.tv));cfg.tv=TV[(n+d+TV.length)%TV.length][2];store.set('tv',cfg.tv);$('tvSel').value=cfg.tv;applySource(pickSource(R.segIdx,R.prog.segs[Math.max(0,R.segIdx)]),false);tvUi();showCtrl()}
+$('bChUp').onclick=()=>chStep(1);$('bChDown').onclick=()=>chStep(-1);
+$('bSnd').onclick=()=>{cfg.tvSound=!cfg.tvSound;store.set('tvSound',cfg.tvSound);$('tvSound').checked=cfg.tvSound;applySource(pickSource(R.segIdx,R.prog.segs[Math.max(0,R.segIdx)]),false);tvUi();showCtrl()};
 function applyFit(){$('ride').classList.toggle('fit-contain',cfg.fit==='contain');$('bFit').textContent=cfg.fit==='contain'?'영상 전체 보기':'화면 채우기'}
 $('bFit').onclick=()=>{cfg.fit=cfg.fit==='contain'?'cover':'contain';store.set('fit',cfg.fit);applyFit();showCtrl()};
 $('bDown').onclick=()=>setInt(-.05);$('bUp').onclick=()=>setInt(.05);
 $('bFull').onclick=async()=>{try{document.fullscreenElement?await document.exitFullscreen():await document.documentElement.requestFullscreen()}catch(e){toast('이 화면에서는 전체화면을 쓸 수 없어요')}showCtrl()};
 $('bEnd').onclick=()=>{if($('bEnd').dataset.arm){finish();return}$('bEnd').dataset.arm=1;$('bEnd').textContent='한 번 더 누르면 종료';setTimeout(()=>{delete $('bEnd').dataset.arm;$('bEnd').textContent='종료'},3000);showCtrl()};
-addEventListener('keydown',e=>{if(!R.running)return;if(e.code==='Space'){e.preventDefault();setPause(!R.paused)}else if(e.key==='ArrowRight')$('bSkip').click();else if(e.key==='ArrowUp')setInt(.05);else if(e.key==='ArrowDown')setInt(-.05)});
+addEventListener('keydown',e=>{if(!R.running)return;if(e.code==='Space'){e.preventDefault();setPause(!R.paused)}else if(e.key==='ArrowRight')$('bSkip').click();else if(e.key==='ArrowUp')setInt(.05);else if(e.key==='ArrowDown')setInt(-.05);else if(cfg.vid==='tv'&&(e.key==='PageUp'||e.key===']'))chStep(1);else if(cfg.vid==='tv'&&(e.key==='PageDown'||e.key==='['))chStep(-1)});
 
 /* ================= finish & summary ================= */
 function finish(){
