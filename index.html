@@ -200,7 +200,7 @@ section.step{margin-top:26px}
       <button class="card" role="radio" data-vid="nasa"><img class="thumb" src="https://i.ytimg.com/vi/ROboUHfPUrU/hqdefault_live.jpg" alt="" loading="lazy"><span class="t">우주에서 본 지구</span><span class="d">NASA 국제우주정거장 실시간 영상 (유튜브 공식 라이브). 실시간이라 재생 속도 맞추기와 구간별 전환은 적용되지 않아요. 밤 시간대 궤도에서는 화면이 어둡게 보여요.</span></button>
       <div class="card wide" role="radio" tabindex="0" data-vid="live">
         <span class="t">세계 라이브 캠</span>
-        <span class="d">유튜브 실시간 방송을 배경으로 틀어요. 모두 4K 방송이에요. 고강도 구간에는 나자레 파도·오사카·크라이스트처치 공항·시드니 항구·홍콩·베네치아, 워밍업과 회복 구간에는 한강·남산·광안대교·성산일출봉·도쿄만·세이셸 해변이 돌아가며 나와요. 화질은 화면 크기와 인터넷 속도에 맞춰 유튜브가 정해요.</span>
+        <span class="d">유튜브 실시간 방송을 배경으로 틀어요. 모두 4K 방송이에요. 고강도 구간에는 나자레 파도·오사카·크라이스트처치 공항·시드니 항구·홍콩·베네치아, 워밍업과 회복 구간에는 한강·남산·광안대교·성산일출봉·도쿄만·세이셸 해변이 무작위로 바뀌며 나와요. 화질은 화면 크기와 인터넷 속도에 맞춰 유튜브가 정해요.</span>
         <label class="field" for="ytIn"><input id="ytIn" type="url" placeholder="원하는 유튜브 라이브 주소 (선택, 넣으면 이 영상만 나와요)"></label>
         <span class="hint" id="ytState"></span>
       </div>
@@ -664,18 +664,18 @@ function pickSource(i,s){
   if(cfg.vid==='alpine'||cfg.vid==='coast'){
     if(sw)R.sampleFlip^=1;const th=R.sampleFlip?(cfg.vid==='alpine'?'coast':'alpine'):cfg.vid;
     return{key:'scene:'+th,kind:'scene',theme:th,label:th==='alpine'?'알프스 고갯길':'해안도로 노을'}}
-  if(cfg.vid==='file'){const n=files.length||1,fi=cfg.sw?i%n:0;return{key:'file:'+fi,kind:'video',url:files[fi]?.url||fileURL,fileIdx:fi,label:files[fi]?.name}}
+  if(cfg.vid==='file'){const n=files.length||1;let fi=0;if(cfg.sw&&n>1){do{fi=Math.floor(Math.random()*n)}while(R.cur&&fi===R.cur.fileIdx)}return{key:'file:'+fi,kind:'video',url:files[fi]?.url||fileURL,fileIdx:fi,label:files[fi]?.name}}
   if(cfg.vid==='url')return{key:'url',kind:'video',url:cfg.url};
   if(cfg.vid==='nasa')return{key:'yt:'+NASA_YT,kind:'yt',id:NASA_YT,live:true,label:'NASA · 국제우주정거장에서 본 지구 (라이브)'};
   if(cfg.vid==='live'){const own=ytId(cfg.yt);if(own)return{key:'yt:'+own,kind:'yt',id:own,live:true,label:'유튜브 라이브'};
-    const pool=LIVE.filter(c=>c.hard===hard);if(R.srcKey&&!cfg.sw)return null;const k=hard?'lh':'le';R.camIdx[k]=(R.camIdx[k]||0);const c=pool[R.camIdx[k]++%pool.length];
+    const pool=LIVE.filter(c=>c.hard===hard);if(R.srcKey&&!cfg.sw)return null;const c=pickRand(pool,x=>'yt:'+x.id);
     return{key:'yt:'+c.id,kind:'yt',id:c.id,live:true,label:c.name}}
   // cctv: hard → highway first, easy → national road first
   const pref=hard?['ex','its']:['its','ex'];let road=pref.find(r=>cams.some(c=>c.road===r));
   const pool=cams.filter(c=>c.road===road);if(!pool.length)return{key:'scene:alpine',kind:'scene',theme:'alpine'};
   if(R.srcKey&&!cfg.sw)return null; // keep current camera
   if(!camsMock&&Date.now()-camsAt>10*60e3)findCams(); // stream URLs carry expiring tokens; refresh in background
-  const c=pool[R.camIdx[road]++%pool.length];
+  const c=pickRand(pool,x=>x.url?'cam:'+x.url:'mock:'+x.name);
   const label=(road==='ex'?'고속도로 · ':'국도 · ')+c.name;
   return c.url?{key:'cam:'+c.url,kind:'video',url:c.url,live:true,label}:{key:'mock:'+c.name,kind:'scene',theme:c.theme,cctv:true,label};
 }
@@ -695,6 +695,8 @@ const LIVE=[ // all streams offer 2160p (4K)
  {id:'Thtj8Ht7Z_c',name:'세이셸 해변 4K · Luxury Island',hard:false},
 ];
 function ytId(u){if(!u)return null;const m=String(u).match(/(?:v=|youtu\.be\/|\/live\/|\/embed\/|\/shorts\/)([\w-]{11})/);return m?m[1]:(/^[\w-]{11}$/.test(u.trim())?u.trim():null)}
+// random pick that avoids repeating what is on screen now
+function pickRand(pool,keyOf){const opts=pool.length>1?pool.filter(x=>keyOf(x)!==R.srcKey):pool;return opts[Math.floor(Math.random()*opts.length)]}
 const NASA_YT='ROboUHfPUrU'; // NASA official 24/7 ISS live stream on YouTube (checked 2026-11-22)
 let hls=null;
 function applySource(src,fade=true){
